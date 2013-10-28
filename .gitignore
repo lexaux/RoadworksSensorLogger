@@ -1,0 +1,10 @@
+bin
+gen
+out
+.idea
+*.iml
+local.properties
+proguard-project.txt
+project.properties
+*.apk
+target
