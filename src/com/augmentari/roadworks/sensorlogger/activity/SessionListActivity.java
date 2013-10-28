@@ -1,5 +1,6 @@
 package com.augmentari.roadworks.sensorlogger.activity;
 
+import android.app.ActionBar;
 import android.app.ListActivity;
 import android.app.LoaderManager;
 import android.app.ProgressDialog;
@@ -29,30 +30,37 @@ public class SessionListActivity extends ListActivity implements LoaderManager.L
     @Override
 
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.session_list_options, menu);
+        //getMenuInflater().inflate(R.menu.session_list_options, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.showControlScreen:
-                Intent showResultsList = new Intent(this, MainActivity.class);
-                startActivity(showResultsList);
-                break;
+            case android.R.id.home:
+                finish();
+                return true;
         }
-        return true;
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //for back navigation
+        
+        ActionBar actionBar = getActionBar();
+        if(actionBar != null){
+        	actionBar.setDisplayHomeAsUpEnabled(true);
+        	actionBar.setHomeButtonEnabled(true);        	
+        }
+        
         getListView().setOnItemLongClickListener(this);
 
         // Create a progress bar to display while the list loads
         TextView textView = new TextView(this);
-        textView.setText("No data. Please record some sessions first");
+        textView.setText(R.string.sessionlist_empty_text);
         textView.setLayoutParams(
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,

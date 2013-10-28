@@ -49,5 +49,6 @@
     <string name="prefActivity">Preferences</string>
     <string name="pref_api_base_url_title">API base url</string>
     <string name="manualUploadData">Upload processed data</string>
+    <string name="sessionlist_empty_text">No data. Please record some sessions first</string>
 
 </resources>
