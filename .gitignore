@@ -8,3 +8,7 @@ proguard-project.txt
 project.properties
 *.apk
 target
+# Eclipse project files
+.classpath
+.project
+.settings
