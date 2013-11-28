@@ -4,12 +4,15 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.text.format.DateFormat;
 import com.augmentari.roadworks.model.RecordingSession;
 import com.augmentari.roadworks.sensorlogger.util.Formats;
+import com.augmentari.roadworks.sensorlogger.util.Log;
+import org.apache.commons.io.IOUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -169,6 +172,14 @@ public class RecordingSessionDAO {
         object.put("startTime", Formats.formatJsonDate(session.getStartTime()));
         object.put("endTime", Formats.formatJsonDate(session.getEndTime()));
         object.put("eventsLogged", session.getEventsLogged());
+
+        // TODO: implement this effectively, please!
+        try {
+            object.put("data", IOUtils.toString(new FileInputStream(session.getDataFileFullPath())));
+        } catch (IOException e) {
+            Log.e("Error reading data for the session " + session.getId(), e);
+            object.put("data", "");
+        }
 
         return object;
     }

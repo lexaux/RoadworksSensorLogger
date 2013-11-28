@@ -84,14 +84,12 @@ public class DataUploaderService extends Service {
                 String realUrl = PreferenceManager.getDefaultSharedPreferences(context).getString(PrefActivity.KEY_PREF_API_BASE_URL, "") + "api/helloworld";
                 connection = NetworkingFactory.openConnection(realUrl, context);
                 connection.setDoOutput(true);
+                connection.setConnectTimeout(5000);
                 connection.setRequestMethod("POST");
-
-                List<RecordingSession> sessionList = new ArrayList<RecordingSession>(Arrays.asList(new RecordingSession(), new RecordingSession()));
 
                 dao = new RecordingSessionDAO(DataUploaderService.this);
                 dao.openRead();
                 JSONArray jsonArray = new JSONArray();
-
 
                 List<RecordingSession> sessions = dao.getRecordingSessionsToUpload();
                 long[] ids = new long[sessions.size()];
