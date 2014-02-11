@@ -12,7 +12,7 @@ import com.augmentari.roadworks.sensorlogger.R;
 /**
  * Activity for settings (preferences here).
  */
-public class PrefActivity extends Activity {
+public class PreferencesActivity extends Activity {
     public static final String KEY_PREF_API_BASE_URL = "pref_api_base_url";
 
     public static class SettingsFragment extends PreferenceFragment {
@@ -26,19 +26,19 @@ public class PrefActivity extends Activity {
 
             Preference connectionPref = findPreference(KEY_PREF_API_BASE_URL);
             connectionPref.setSummary(getPreferenceScreen().getSharedPreferences().getString(KEY_PREF_API_BASE_URL, ""));
-            
+
             //correct way for updating preference summary
-            connectionPref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {				
-				@Override
-				public boolean onPreferenceChange(Preference preference, Object newValue) {
-					
-					if(newValue instanceof CharSequence){
-						preference.setSummary((CharSequence) newValue);
-					}
-					
-					return true;
-				}
-			});
+            connectionPref.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+
+                    if (newValue instanceof CharSequence) {
+                        preference.setSummary((CharSequence) newValue);
+                    }
+
+                    return true;
+                }
+            });
         }
 
     }

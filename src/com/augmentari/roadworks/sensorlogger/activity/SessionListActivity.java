@@ -49,13 +49,13 @@ public class SessionListActivity extends ListActivity implements LoaderManager.L
         super.onCreate(savedInstanceState);
 
         //for back navigation
-        
+
         ActionBar actionBar = getActionBar();
-        if(actionBar != null){
-        	actionBar.setDisplayHomeAsUpEnabled(true);
-        	actionBar.setHomeButtonEnabled(true);        	
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            actionBar.setHomeButtonEnabled(true);
         }
-        
+
         getListView().setOnItemLongClickListener(this);
 
         // Create a progress bar to display while the list loads

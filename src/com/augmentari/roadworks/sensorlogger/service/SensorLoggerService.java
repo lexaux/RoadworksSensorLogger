@@ -26,7 +26,12 @@ import com.augmentari.roadworks.sensorlogger.util.Constants;
 import com.augmentari.roadworks.sensorlogger.util.Formats;
 import com.augmentari.roadworks.sensorlogger.util.Log;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -37,12 +42,13 @@ import java.util.List;
  * 1) collecting data from various sources (accelerometer, GPS, maybe microphone)
  * 2) packing it, preparing and sending to the rest (server)
  */
-public class SensorLoggerService extends Service implements SensorEventListener, LocationListener
-{
+public class SensorLoggerService extends Service implements SensorEventListener, LocationListener {
 
     // size of the buffer for the file stream; .5M for a start
     public static final int BUFFER_SIZE = 128 * 1024;
+
     private boolean isStarted = false;
+
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private LocationManager locationManager;
@@ -63,14 +69,12 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     private float[] gravity = new float[3];
 
     @Override
-    public IBinder onBind(Intent intent)
-    {
+    public IBinder onBind(Intent intent) {
         return new SessionLoggerServiceBinder();
     }
 
     @Override
-    public void onCreate()
-    {
+    public void onCreate() {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         recordingSessionDAO = new RecordingSessionDAO(this);
@@ -79,8 +83,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId)
-    {
+    public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i("On start command");
         isStarted = true;
 
@@ -95,14 +98,12 @@ public class SensorLoggerService extends Service implements SensorEventListener,
                 .setWhen(System.currentTimeMillis())
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
-                .getNotification();
+                .build();
 
         startForeground(Constants.ONGOING_NOTIFICATION, notification);
 
-        if (accelerometer == null)
-        {
-            try
-            {
+        if (accelerometer == null) {
+            try {
                 currentSession = new RecordingSession();
                 currentSession.setStartTime(new Date());
 
@@ -116,8 +117,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
                 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream, BUFFER_SIZE);
                 fileResultsWriter = new PrintWriter(new OutputStreamWriter(bufferedOutputStream));
                 writeHeading();
-            } catch (FileNotFoundException e)
-            {
+            } catch (FileNotFoundException e) {
                 CloseUtils.closeStream(outputStream);
                 throw new RuntimeException(e);
             }
@@ -137,11 +137,9 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     }
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         Log.i("On service destroy");
-        if (!isStarted)
-        {
+        if (!isStarted) {
             // we have only been bound, and no real action to take.
             return;
         }
@@ -151,8 +149,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
 
         // seem like don't need to close 'lower' streams, as this delegates close command down the
         // chain till the fileOutputStream
-        if (wakeLock != null)
-        {
+        if (wakeLock != null) {
             wakeLock.release();
         }
         CloseUtils.closeStream(fileResultsWriter);
@@ -173,19 +170,16 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         super.onDestroy();
     }
 
-    private void writeHeading()
-    {
+    private void writeHeading() {
         fileResultsWriter.println("Time, Accelerometer Sensor 1, Sensor 2, Sensor 3, Gps Speed, Latitude, Longitude");
     }
 
     @Override
-    public void onSensorChanged(SensorEvent sensorEvent)
-    {
+    public void onSensorChanged(SensorEvent sensorEvent) {
         recordReading(sensorEvent.values);
     }
 
-    private void recordReading(float[] readings)
-    {
+    private void recordReading(float[] readings) {
         assert readings.length == 3;
 
         final float alpha = 0.8f;
@@ -209,21 +203,18 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         fileResultsWriter.println(sb.toString());
 
         statementsLogged++;
-        for (AccelChangedListener listener : listeners)
-        {
+        for (AccelChangedListener listener : listeners) {
             listener.onAccelChanged(x, y, z);
         }
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int i)
-    {
+    public void onAccuracyChanged(Sensor sensor, int i) {
         Log.i("onAccuracyChanged");
     }
 
     @Override
-    public void onLocationChanged(Location location)
-    {
+    public void onLocationChanged(Location location) {
         Log.i("onLocationChanged");
         latitude = location.getLatitude();
         longitude = location.getLongitude();
@@ -231,53 +222,43 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     }
 
     @Override
-    public void onStatusChanged(String s, int i, Bundle bundle)
-    {
+    public void onStatusChanged(String s, int i, Bundle bundle) {
         Log.i("onStatusChanged");
     }
 
     @Override
-    public void onProviderEnabled(String s)
-    {
+    public void onProviderEnabled(String s) {
         Log.i("onProviderEnabled");
     }
 
     @Override
-    public void onProviderDisabled(String s)
-    {
+    public void onProviderDisabled(String s) {
         Log.i("onProviderDisabled");
     }
 
-    public interface AccelChangedListener
-    {
+    public interface AccelChangedListener {
         public void onAccelChanged(float a, float b, float c);
     }
 
-    public class SessionLoggerServiceBinder extends Binder
-    {
-        public boolean isStarted()
-        {
+    public class SessionLoggerServiceBinder extends Binder {
+        public boolean isStarted() {
             return isStarted;
         }
 
-        public long getStartTimeMillis()
-        {
+        public long getStartTimeMillis() {
             return startTimeMillis;
         }
 
-        public long getStatementsLogged()
-        {
+        public long getStatementsLogged() {
             return statementsLogged;
         }
 
-        public void addAccelChangedListener(AccelChangedListener listener)
-        {
+        public void addAccelChangedListener(AccelChangedListener listener) {
             if (listeners.contains(listener)) return;
             listeners.add(listener);
         }
 
-        public void removeAccelChangedListener(AccelChangedListener listener)
-        {
+        public void removeAccelChangedListener(AccelChangedListener listener) {
             listeners.remove(listener);
         }
     }

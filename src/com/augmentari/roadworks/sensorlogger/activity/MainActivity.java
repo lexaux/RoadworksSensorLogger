@@ -1,6 +1,5 @@
 package com.augmentari.roadworks.sensorlogger.activity;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
@@ -14,7 +13,6 @@ import android.os.Message;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -232,7 +230,7 @@ public class MainActivity extends Activity {
                 break;
 
             case R.id.settingsMenu:
-                Intent settingsActivityIntent = new Intent(this, PrefActivity.class);
+                Intent settingsActivityIntent = new Intent(this, PreferencesActivity.class);
                 startActivity(settingsActivityIntent);
                 break;
 

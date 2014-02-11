@@ -12,7 +12,7 @@ import android.preference.PreferenceManager;
 import android.widget.Toast;
 import com.augmentari.roadworks.model.RecordingSession;
 import com.augmentari.roadworks.sensorlogger.R;
-import com.augmentari.roadworks.sensorlogger.activity.PrefActivity;
+import com.augmentari.roadworks.sensorlogger.activity.PreferencesActivity;
 import com.augmentari.roadworks.sensorlogger.activity.SessionListActivity;
 import com.augmentari.roadworks.sensorlogger.dao.RecordingSessionDAO;
 import com.augmentari.roadworks.sensorlogger.net.ssl.NetworkingFactory;
@@ -24,8 +24,6 @@ import org.json.JSONArray;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -81,7 +79,7 @@ public class DataUploaderService extends Service {
 
             try {
                 Context context = DataUploaderService.this;
-                String realUrl = PreferenceManager.getDefaultSharedPreferences(context).getString(PrefActivity.KEY_PREF_API_BASE_URL, "") + "api/helloworld";
+                String realUrl = PreferenceManager.getDefaultSharedPreferences(context).getString(PreferencesActivity.KEY_PREF_API_BASE_URL, "") + "api/helloworld";
                 connection = NetworkingFactory.openConnection(realUrl, context);
                 connection.setDoOutput(true);
                 connection.setConnectTimeout(5000);
