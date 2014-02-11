@@ -9,7 +9,6 @@ public class CircularBuffer {
 
     int endIndex = -1; // will be incremented after the startup
 
-
     private int size;
     public
     boolean isOverflown = false;

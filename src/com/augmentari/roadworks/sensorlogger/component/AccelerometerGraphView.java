@@ -12,6 +12,8 @@ import android.view.WindowManager;
 import com.augmentari.roadworks.sensorlogger.service.SensorLoggerService;
 import com.augmentari.roadworks.sensorlogger.util.Log;
 
+import java.util.Arrays;
+
 /**
  * View showing line chart/graph view of the accelerometer readings.
  */
@@ -20,12 +22,11 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     public static final float GRAVITY_FT_SEC = 9.8f;
     // max possible size of the circularbuffer = sizeof(float) * 3 * max(deviceX, deviceY). So, should not be more than
     // 20Kb
-    private static CircularBuffer buffer = null;
+    private CircularBuffer buffer = null;
     final Object changedDataLock = new Object();
-    DrawingThread thread;
+    private DrawingThread thread;
     private Paint paint1, paint2, paint3, whitePaint;
     private int width;
-    private int height;
     private float offset;
     private float ftSecToPx;
 
@@ -73,23 +74,35 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
         float lastY2 = offset + buffer.getB(0) * ftSecToPx;
         float lastY3 = offset + buffer.getC(0) * ftSecToPx;
 
+        int pointer = 0;
+        float normalizer[] = new float[10];
+        Arrays.fill(normalizer, 0.0f);
+
         for (int i = 1; i < buffer.getActualSize(); i++) {
             float toX = width - i;
-            float toY = offset + buffer.getA(i) * ftSecToPx;
+
+            // current differential value to go to the LPF buffer
+            normalizer[pointer] = Math.abs(buffer.getA(i) - buffer.getA(i - 1));
+            float valueSum = 0;
+            for (float f : normalizer) {
+                valueSum += f;
+            }
+            float toY = offset - (valueSum / 10 * ftSecToPx);
             canvas.drawLine(lastX1, lastY1, toX, toY, paint1);
             lastX1 = toX;
             lastY1 = toY;
 
-            toY = offset + buffer.getB(i) * ftSecToPx;
-            canvas.drawLine(lastX2, lastY2, toX, toY, paint2);
-            lastX2 = toX;
-            lastY2 = toY;
-
-            toY = offset + buffer.getC(i) * ftSecToPx;
-            canvas.drawLine(lastX3, lastY3, toX, toY, paint3);
-
-            lastX3 = toX;
-            lastY3 = toY;
+//            toY = offset + buffer.getB(i) * ftSecToPx;
+//            canvas.drawLine(lastX2, lastY2, toX, toY, paint2);
+//            lastX2 = toX;
+//            lastY2 = toY;
+//
+//            toY = offset + buffer.getC(i) * ftSecToPx;
+//            canvas.drawLine(lastX3, lastY3, toX, toY, paint3);
+//
+//            lastX3 = toX;
+//            lastY3 = toY;
+            pointer = (pointer + 1) % 10;
         }
     }
 
@@ -108,7 +121,6 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
             manager.getDefaultDisplay().getSize(p);
             buffer = new CircularBuffer(Math.max(p.x, p.y));
         }
-        this.height = height;
         this.width = width;
 
         offset = height / 2;
