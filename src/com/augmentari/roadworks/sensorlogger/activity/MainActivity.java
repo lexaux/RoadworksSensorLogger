@@ -57,8 +57,14 @@ public class MainActivity extends Activity {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            timeLoggedTextView.setText(Long.toString((System.currentTimeMillis() - binder.getStartTimeMillis()) / 1000));
-            statementsLoggedTextView.setText(Formats.formatWithSuffices(binder.getStatementsLogged()));
+            if (binder.hasGPSfix()) {
+                statementsLoggedTextView.setText(Formats.formatWithSuffices(binder.getStatementsLogged()));
+                timeLoggedTextView.setText(Long.toString((System.currentTimeMillis() - binder.getStartTimeMillis()) / 1000));
+
+            } else {
+                statementsLoggedTextView.setText(getString(R.string.sensor_logger_service_notification_waiting_GPS_text));
+                timeLoggedTextView.setText(getString(R.string.sensor_logger_service_notification_waiting_GPS_text));
+            }
         }
     };
 
@@ -105,11 +111,7 @@ public class MainActivity extends Activity {
                             break;
 
                         case STOPPED:
-                            Toast.makeText(MainActivity.this, R.string.dataGatheringStarted, Toast.LENGTH_SHORT).show();
-
-                            Intent testServiceIntent = new Intent(MainActivity.this, SensorLoggerService.class);
-                            startService(testServiceIntent);
-
+                            startService(new Intent(MainActivity.this, SensorLoggerService.class));
                             setServiceState(ServiceState.STARTED);
                             break;
                     }

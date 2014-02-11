@@ -1,6 +1,7 @@
 package com.augmentari.roadworks.sensorlogger.service;
 
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -49,23 +50,31 @@ public class SensorLoggerService extends Service implements SensorEventListener,
 
     private boolean isStarted = false;
 
-    private SensorManager sensorManager;
     private Sensor accelerometer;
+
     private LocationManager locationManager;
+    private SensorManager sensorManager;
+    private NotificationManager notificationManager;
+    private PowerManager powerManager;
+
     private FileOutputStream outputStream;
     private PrintWriter fileResultsWriter;
     private long startTimeMillis;
     private long statementsLogged;
+
+    private boolean hasLocation = false;
     private double latitude = 0;
     private double longitude = 0;
     private float speed = 0;
+
     private RecordingSessionDAO recordingSessionDAO;
+
     // A Wake Lock object. Lock is acquired when the application asks the service to start listening to events, and
     // is releaserd when the service is actually stopped. As this wake lock is a PARTIAL one, screen may go off but the
     // processor should remain running in the background
     private PowerManager.WakeLock wakeLock = null;
-    private RecordingSession currentSession;
-    private List<AccelChangedListener> listeners = new ArrayList<AccelChangedListener>();
+    private RecordingSession currentSession = null;
+    private List<AccelerometerChangeListener> listeners = new ArrayList<AccelerometerChangeListener>();
     private float[] gravity = new float[3];
 
     @Override
@@ -77,6 +86,9 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     public void onCreate() {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+
         recordingSessionDAO = new RecordingSessionDAO(this);
 
         super.onCreate();
@@ -84,99 +96,83 @@ public class SensorLoggerService extends Service implements SensorEventListener,
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i("On start command");
         isStarted = true;
 
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
+        wakeLock.acquire();
+
+        hasLocation = false;
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+
+        Notification notification = getNotification(
+                getString(R.string.notification_title),
+                getString(R.string.sensor_logger_service_notification_waiting_GPS_text),
+                getString(R.string.sensor_logger_service_notification_waiting_GPS_text)
+        );
+
+        startForeground(Constants.ONGOING_NOTIFICATION, notification);
+
+        return START_STICKY;
+    }
+
+    private Notification getNotification(String starterNotificationText, String ticker, String text) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-        Notification notification = new Notification.Builder(this)
-                .setTicker(getString(R.string.sensor_logger_service_notification_ticker))
-                .setContentTitle(getString(R.string.notification_ongoing_title))
-                .setContentText(getString(R.string.sensor_logger_service_notification_text))
+        return new Notification.Builder(this)
+                .setTicker(ticker)
+                .setContentTitle(starterNotificationText)
+                .setContentText(text)
                 .setSmallIcon(R.drawable.ic_stat_logger_notification)
                 .setWhen(System.currentTimeMillis())
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .build();
-
-        startForeground(Constants.ONGOING_NOTIFICATION, notification);
-
-        if (accelerometer == null) {
-            try {
-                currentSession = new RecordingSession();
-                currentSession.setStartTime(new Date());
-
-                String shortFileName = "data" + currentSession.getStartTime().getTime() + ".log";
-                currentSession.setDataFileFullPath(new File(getFilesDir(),
-                        shortFileName).getAbsolutePath());
-                recordingSessionDAO.open();
-                currentSession = recordingSessionDAO.startNewRecordingSession(currentSession);
-
-                outputStream = openFileOutput(shortFileName, Context.MODE_WORLD_READABLE);
-                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream, BUFFER_SIZE);
-                fileResultsWriter = new PrintWriter(new OutputStreamWriter(bufferedOutputStream));
-                writeHeading();
-            } catch (FileNotFoundException e) {
-                CloseUtils.closeStream(outputStream);
-                throw new RuntimeException(e);
-            }
-
-            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
-            wakeLock.acquire();
-
-            startTimeMillis = System.currentTimeMillis();
-            statementsLogged = 0;
-
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-        }
-        return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        Log.i("On service destroy");
         if (!isStarted) {
             // we have only been bound, and no real action to take.
             return;
         }
         isStarted = false;
+
         stopForeground(true);
         sensorManager.unregisterListener(this);
+        locationManager.removeUpdates(this);
 
         // seem like don't need to close 'lower' streams, as this delegates close command down the
         // chain till the fileOutputStream
         if (wakeLock != null) {
             wakeLock.release();
         }
+
         CloseUtils.closeStream(fileResultsWriter);
 
-        locationManager.removeUpdates(this);
+        if (currentSession != null) {
 
-        recordingSessionDAO.open();
-        recordingSessionDAO.finishSession(currentSession.getId(), statementsLogged, new Date());
-        CloseUtils.closeDao(recordingSessionDAO);
+            recordingSessionDAO.open();
+            recordingSessionDAO.finishSession(currentSession.getId(), statementsLogged, new Date());
+            CloseUtils.closeDao(recordingSessionDAO);
 
-        Toast.makeText(
-                this,
-                MessageFormat.format(
-                        getString(R.string.fileCollectedSizeMessage),
-                        Formats.formatReadableBytesSize(new File(currentSession.getDataFileFullPath()).length())),
-                Toast.LENGTH_LONG).show();
+            Toast.makeText(
+                    this,
+                    MessageFormat.format(
+                            getString(R.string.fileCollectedSizeMessage),
+                            Formats.formatReadableBytesSize(new File(currentSession.getDataFileFullPath()).length())),
+                    Toast.LENGTH_LONG).show();
+        }
 
         super.onDestroy();
-    }
-
-    private void writeHeading() {
-        fileResultsWriter.println("Time, Accelerometer Sensor 1, Sensor 2, Sensor 3, Gps Speed, Latitude, Longitude");
     }
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         recordReading(sensorEvent.values);
+    }
+
+    private void writeHeading() {
+        fileResultsWriter.println("Time, Accelerometer Sensor 1, Sensor 2, Sensor 3, Gps Speed, Latitude, Longitude");
     }
 
     private void recordReading(float[] readings) {
@@ -203,8 +199,8 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         fileResultsWriter.println(sb.toString());
 
         statementsLogged++;
-        for (AccelChangedListener listener : listeners) {
-            listener.onAccelChanged(x, y, z);
+        for (AccelerometerChangeListener listener : listeners) {
+            listener.onAccelerometerChanged(x, y, z);
         }
     }
 
@@ -216,9 +212,53 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     @Override
     public void onLocationChanged(Location location) {
         Log.i("onLocationChanged");
+
+        // if that's the first time we got a fix, show an appropriate notification.
+        // and fire off the accelerometer reading subscription
+        if (!hasLocation) {
+            subscribeToAccelerometerEvents();
+            Notification notification = getNotification(
+                    getString(R.string.notification_title),
+                    getString(R.string.sensor_logger_service_notification_text),
+                    getString(R.string.sensor_logger_service_notification_text)
+            );
+            notificationManager.notify(Constants.ONGOING_NOTIFICATION, notification);
+            hasLocation = true;
+        }
+
+        // and now triggering the actual accel updates, which will push data to the file.
         latitude = location.getLatitude();
         longitude = location.getLongitude();
         speed = location.getSpeed();
+    }
+
+    private void subscribeToAccelerometerEvents() {
+        if (accelerometer == null) {
+            try {
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+
+                startTimeMillis = System.currentTimeMillis();
+                statementsLogged = 0;
+
+                currentSession = new RecordingSession();
+                currentSession.setStartTime(new Date());
+
+                String shortFileName = "data" + currentSession.getStartTime().getTime() + ".log";
+                currentSession.setDataFileFullPath(new File(getFilesDir(),
+                        shortFileName).getAbsolutePath());
+                recordingSessionDAO.open();
+                currentSession = recordingSessionDAO.startNewRecordingSession(currentSession);
+
+                outputStream = openFileOutput(shortFileName, Context.MODE_PRIVATE);
+                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream, BUFFER_SIZE);
+                fileResultsWriter = new PrintWriter(new OutputStreamWriter(bufferedOutputStream));
+                writeHeading();
+            } catch (FileNotFoundException e) {
+                CloseUtils.closeStream(outputStream);
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     @Override
@@ -236,10 +276,16 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         Log.i("onProviderDisabled");
     }
 
-    public interface AccelChangedListener {
-        public void onAccelChanged(float a, float b, float c);
+    /**
+     * Interface, whose methods get invoked when new data comes from Accelerometer.
+     */
+    public interface AccelerometerChangeListener {
+        public void onAccelerometerChanged(float a, float b, float c);
     }
 
+    /**
+     * A Binder interface to this service, providing some communication to the outside world.
+     */
     public class SessionLoggerServiceBinder extends Binder {
         public boolean isStarted() {
             return isStarted;
@@ -253,12 +299,16 @@ public class SensorLoggerService extends Service implements SensorEventListener,
             return statementsLogged;
         }
 
-        public void addAccelChangedListener(AccelChangedListener listener) {
+        public boolean hasGPSfix() {
+            return hasLocation;
+        }
+
+        public void addAccelChangedListener(AccelerometerChangeListener listener) {
             if (listeners.contains(listener)) return;
             listeners.add(listener);
         }
 
-        public void removeAccelChangedListener(AccelChangedListener listener) {
+        public void removeAccelChangedListener(AccelerometerChangeListener listener) {
             listeners.remove(listener);
         }
     }

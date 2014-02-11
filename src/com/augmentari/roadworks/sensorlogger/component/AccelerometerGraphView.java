@@ -15,7 +15,7 @@ import com.augmentari.roadworks.sensorlogger.util.Log;
 /**
  * View showing line chart/graph view of the accelerometer readings.
  */
-public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder.Callback, SensorLoggerService.AccelChangedListener {
+public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder.Callback, SensorLoggerService.AccelerometerChangeListener {
 
     public static final float GRAVITY_FT_SEC = 9.8f;
     // max possible size of the circularbuffer = sizeof(float) * 3 * max(deviceX, deviceY). So, should not be more than
@@ -113,7 +113,6 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 
         offset = height / 2;
         ftSecToPx = height / (2.5f * GRAVITY_FT_SEC);
-
     }
 
     @Override
@@ -134,7 +133,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     }
 
     @Override
-    public void onAccelChanged(float a, float b, float c) {
+    public void onAccelerometerChanged(float a, float b, float c) {
         synchronized (changedDataLock) {
             changedDataLock.notifyAll();
         }

@@ -25,17 +25,16 @@
     <string name="ok">OK</string>
     <string name="clearFileButton">Clear the file</string>
     <string name="noData">--</string>
-    <string name="dataGatheringStarted">Started recording location and accelerometer readings.</string>
     <string name="timeLoggedMessage">Time logged</string>
     <string name="linesLoggedMessage">Samples logged</string>
     <string name="foregroundServiceLabel">Logging road quality data</string>
     <string name="sessionListActivityName">Session list</string>
 
-    <string name="notification_ongoing_title">Roadworks - recording sensor data</string>
     <string name="notification_title">Roadworks</string>
 
-    <string name="sensor_logger_service_notification_ticker">Recording started</string>
-    <string name="sensor_logger_service_notification_text">Recording sensor data for road qaulity assessment</string>
+    <string name="sensor_logger_service_notification_text">Recording sensor data</string>
+    <string name="sensor_logger_service_notification_waiting_GPS_text">Waiting for GPS</string>
+
     <string name="data_upload_service_success_ticker">Roadworks - successfully uploaded data!</string>
     <string name="data_upload_service_success_text">Uploaded sessions: %1$d</string>
     <string name="data_upload_service_fail_ticker">Roadworks - data upload failed</string>
