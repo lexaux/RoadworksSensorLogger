@@ -9,6 +9,9 @@ import com.augmentari.roadworks.sensorlogger.service.DataUploaderService;
 
 
 /**
+ * TODO #2 GitHub disabled temporarily due to problems with its work. Shall I re-
+ * enable it a little later?
+ *
  * Class performing reactions on power state/networking state change.
  */
 public class SystemEventReceiver extends BroadcastReceiver {
