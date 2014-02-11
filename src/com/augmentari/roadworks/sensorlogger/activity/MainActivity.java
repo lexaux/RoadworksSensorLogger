@@ -13,10 +13,9 @@ import android.os.Message;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 import com.augmentari.roadworks.sensorlogger.R;
 import com.augmentari.roadworks.sensorlogger.component.AccelerometerGraphView;
 import com.augmentari.roadworks.sensorlogger.component.CircularBuffer;
@@ -132,13 +131,14 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         BugSenseHandler.initAndStartSession(this, Constants.BUGSENSE_API_KEY);
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setContentView(R.layout.main);
         serviceControlButton = (Button) findViewById(R.id.serviceControlButton);
         serviceControlButton.setOnClickListener(buttonOnClickListener);
 
         statementsLoggedTextView = (TextView) findViewById(R.id.statementsLoggedTextView);
         timeLoggedTextView = (TextView) findViewById(R.id.timeLoggedTextView);
-        LinearLayout l = (LinearLayout) findViewById(R.id.chartContainer);
 
         accelerometerGraph = (AccelerometerGraphView) findViewById(R.id.accelerometerGraph);
     }

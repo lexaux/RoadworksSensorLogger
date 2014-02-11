@@ -8,4 +8,7 @@
             android:entryValues="@array/pref_api_base_url_values"
             android:defaultValue="https://46.4.224.49/"/>
     />
+    <EditTextPreference android:key="pref_LPF_filter_factor"
+                        android:title="@string/prefLowPassFilterFactor"
+                        android:defaultValue="10"/>
 </PreferenceScreen>

@@ -5,10 +5,12 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.Toast;
 import com.augmentari.roadworks.sensorlogger.service.SensorLoggerService;
 import com.augmentari.roadworks.sensorlogger.util.Log;
 
@@ -29,6 +31,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     private int width;
     private float offset;
     private float ftSecToPx;
+    private int filterFactor = 1;
 
     public AccelerometerGraphView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -75,7 +78,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
         float lastY3 = offset + buffer.getC(0) * ftSecToPx;
 
         int pointer = 0;
-        float normalizer[] = new float[10];
+        float normalizer[] = new float[filterFactor];
         Arrays.fill(normalizer, 0.0f);
 
         for (int i = 1; i < buffer.getActualSize(); i++) {
@@ -87,7 +90,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
             for (float f : normalizer) {
                 valueSum += f;
             }
-            float toY = offset - (valueSum / 10 * ftSecToPx);
+            float toY = offset - (valueSum / filterFactor * ftSecToPx);
             canvas.drawLine(lastX1, lastY1, toX, toY, paint1);
             lastX1 = toX;
             lastY1 = toY;
@@ -102,7 +105,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 //
 //            lastX3 = toX;
 //            lastY3 = toY;
-            pointer = (pointer + 1) % 10;
+            pointer = (pointer + 1) % filterFactor;
         }
     }
 
@@ -115,6 +118,14 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        try {
+            filterFactor = Integer.valueOf(PreferenceManager
+                    .getDefaultSharedPreferences(getContext())
+                    .getString("pref_LPF_filter_factor", ""));
+        } catch (NumberFormatException ex) {
+            Toast.makeText(getContext(), "Wrong setting for filter factor - defaulting to 10. Prefs.", Toast.LENGTH_LONG).show();
+        }
+
         if (buffer == null) {
             WindowManager manager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
             Point p = new Point();
