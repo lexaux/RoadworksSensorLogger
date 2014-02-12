@@ -13,6 +13,9 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -98,6 +101,13 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     public int onStartCommand(Intent intent, int flags, int startId) {
         isStarted = true;
 
+        try {
+            Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+            r.play();
+        } catch (Exception e) {
+        }
+
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
         wakeLock.acquire();
 
@@ -111,6 +121,8 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         );
 
         startForeground(Constants.ONGOING_NOTIFICATION, notification);
+
+        //TODO: remove me when ready to only work on GPS.
         hasLocation = true;
         subscribeToAccelerometerEvents();
 
