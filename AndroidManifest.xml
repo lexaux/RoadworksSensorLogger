@@ -13,18 +13,23 @@
         <activity
                 android:name=".activity.MainActivity"
                 android:label="@string/mainActivityName"
-                android:hardwareAccelerated="true">
+                android:hardwareAccelerated="true"
+                android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
         <activity
                 android:name=".activity.SessionListActivity"
-                android:label="@string/sessionListActivityName"/>
+                android:label="@string/sessionListActivityName"
+                android:screenOrientation="portrait"/>
+
         <activity
                 android:name=".activity.PreferencesActivity"
-                android:label="@string/prefActivity"/>
+                android:label="@string/prefActivity"
+                android:screenOrientation="portrait"/>
 
         <service
                 android:exported="false"

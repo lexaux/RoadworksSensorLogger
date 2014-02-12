@@ -27,84 +27,85 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     private CircularBuffer buffer = null;
     final Object changedDataLock = new Object();
     private DrawingThread thread;
-    private Paint paint1, paint2, paint3, whitePaint;
+    private Paint paintNormal, paintOverThreshold, detectionFillPaint, whitePaint;
     private int width;
-    private float offset;
     private float ftSecToPx;
     private int filterFactor = 1;
+    private int height;
+    private float threshold = 2f;
 
     public AccelerometerGraphView(Context context, AttributeSet attrs) {
         super(context, attrs);
         getHolder().addCallback(this);
 
-        paint1 = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint1.setColor(Color.RED);
-        paint1.setStyle(Paint.Style.STROKE);
+        paintNormal = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paintNormal.setColor(Color.GREEN);
+        paintNormal.setStyle(Paint.Style.STROKE);
 
-        paint2 = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint2.setColor(Color.GREEN);
-        paint2.setStyle(Paint.Style.STROKE);
-
-        paint3 = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint3.setColor(Color.YELLOW);
-        paint3.setStyle(Paint.Style.STROKE);
+        paintOverThreshold = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paintOverThreshold.setColor(Color.RED);
+        paintOverThreshold.setStrokeWidth(2f);
+        paintOverThreshold.setStyle(Paint.Style.STROKE);
 
         whitePaint = new Paint();
         whitePaint.setColor(Color.WHITE);
         whitePaint.setStyle(Paint.Style.STROKE);
+
+        detectionFillPaint = new Paint();
+        detectionFillPaint.setColor(Color.RED);
+        detectionFillPaint.setStrokeWidth(0);
+        detectionFillPaint.setStyle(Paint.Style.STROKE);
     }
 
+
     protected void doDrawOnSeparateThread(Canvas canvas) {
-        canvas.drawColor(Color.DKGRAY);
+        canvas.drawColor(Color.BLACK);
+        canvas.drawRect(0, 0, width - 1, height - 1, whitePaint);
+        canvas.drawLine(0, height - threshold * ftSecToPx, width, height - threshold * ftSecToPx, whitePaint);
 
         if (buffer == null) {
             // nothing to draw, quiting.
             return;
         }
 
-        float topG = offset + ftSecToPx * GRAVITY_FT_SEC;
-        float bottomG = offset - ftSecToPx * GRAVITY_FT_SEC;
-
-        canvas.drawLine(0, topG, width, topG, whitePaint);
-        canvas.drawLine(0, offset, width, offset, whitePaint);
-        canvas.drawLine(0, bottomG, width, bottomG, whitePaint);
-
         float lastX1 = width;
-        float lastX2 = width;
-        float lastX3 = width;
-
-        float lastY1 = offset + buffer.getA(0) * ftSecToPx;
-        float lastY2 = offset + buffer.getB(0) * ftSecToPx;
-        float lastY3 = offset + buffer.getC(0) * ftSecToPx;
+        float lastY1 = height - (buffer.getA(0) + buffer.getB(0) + buffer.getC(0) / 3 * ftSecToPx);
 
         int pointer = 0;
-        float normalizer[] = new float[filterFactor];
-        Arrays.fill(normalizer, 0.0f);
+        float normalizer1[] = new float[filterFactor];
+        float normalizer2[] = new float[filterFactor];
+        float normalizer3[] = new float[filterFactor];
+        Arrays.fill(normalizer1, 0.0f);
+        Arrays.fill(normalizer2, 0.0f);
+        Arrays.fill(normalizer3, 0.0f);
 
         for (int i = 1; i < buffer.getActualSize(); i++) {
             float toX = width - i;
 
             // current differential value to go to the LPF buffer
-            normalizer[pointer] = Math.abs(buffer.getA(i) - buffer.getA(i - 1));
+            normalizer1[pointer] = Math.abs(buffer.getA(i) - buffer.getA(i - 1));
+            normalizer2[pointer] = Math.abs(buffer.getB(i) - buffer.getB(i - 1));
+            normalizer3[pointer] = Math.abs(buffer.getC(i) - buffer.getC(i - 1));
+
             float valueSum = 0;
-            for (float f : normalizer) {
-                valueSum += f;
+            for (int j = 0; j < filterFactor; j++) {
+                valueSum += normalizer1[j] + normalizer2[j] + normalizer3[j];
             }
-            float toY = offset - (valueSum / filterFactor * ftSecToPx);
-            canvas.drawLine(lastX1, lastY1, toX, toY, paint1);
+            float value = valueSum / filterFactor / 3;
+            float toY = height - (value * ftSecToPx);
+
+            Paint paint;
+            if (value < threshold) {
+                paint = paintNormal;
+            } else {
+                paint = paintOverThreshold;
+                canvas.drawRect(lastX1, lastY1, toX, height - threshold * ftSecToPx - 1, detectionFillPaint);
+            }
+            canvas.drawLine(lastX1, lastY1, toX, toY, paint);
+
             lastX1 = toX;
             lastY1 = toY;
 
-//            toY = offset + buffer.getB(i) * ftSecToPx;
-//            canvas.drawLine(lastX2, lastY2, toX, toY, paint2);
-//            lastX2 = toX;
-//            lastY2 = toY;
-//
-//            toY = offset + buffer.getC(i) * ftSecToPx;
-//            canvas.drawLine(lastX3, lastY3, toX, toY, paint3);
-//
-//            lastX3 = toX;
-//            lastY3 = toY;
             pointer = (pointer + 1) % filterFactor;
         }
     }
@@ -126,6 +127,14 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
             Toast.makeText(getContext(), "Wrong setting for filter factor - defaulting to 10. Prefs.", Toast.LENGTH_LONG).show();
         }
 
+        try {
+            threshold = Float.valueOf(PreferenceManager
+                    .getDefaultSharedPreferences(getContext())
+                    .getString("pref_detection_threshold", ""));
+        } catch (NumberFormatException ex) {
+            Toast.makeText(getContext(), "Wrong setting for detection threshold. Defaulting to 2.", Toast.LENGTH_LONG).show();
+        }
+
         if (buffer == null) {
             WindowManager manager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
             Point p = new Point();
@@ -133,9 +142,9 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
             buffer = new CircularBuffer(Math.max(p.x, p.y));
         }
         this.width = width;
+        this.height = height;
 
-        offset = height / 2;
-        ftSecToPx = height / (2.5f * GRAVITY_FT_SEC);
+        ftSecToPx = height / GRAVITY_FT_SEC;
     }
 
     @Override

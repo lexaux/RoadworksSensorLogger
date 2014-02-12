@@ -111,6 +111,8 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         );
 
         startForeground(Constants.ONGOING_NOTIFICATION, notification);
+        hasLocation = true;
+        subscribeToAccelerometerEvents();
 
         return START_STICKY;
     }
@@ -168,14 +170,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        recordReading(sensorEvent.values);
-    }
-
-    private void writeHeading() {
-        fileResultsWriter.println("Time, Accelerometer Sensor 1, Sensor 2, Sensor 3, Gps Speed, Latitude, Longitude");
-    }
-
-    private void recordReading(float[] readings) {
+        final float[] readings = sensorEvent.values;
         assert readings.length == 3;
 
         final float alpha = 0.8f;
@@ -188,6 +183,18 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         float y = readings[1] - gravity[1];
         float z = readings[2] - gravity[2];
 
+        //        recordReading(x, y, z);
+
+        for (AccelerometerChangeListener listener : listeners) {
+            listener.onAccelerometerChanged(x, y, z);
+        }
+    }
+
+    private void writeHeading() {
+        fileResultsWriter.println("Time, Accelerometer Sensor 1, Sensor 2, Sensor 3, Gps Speed, Latitude, Longitude");
+    }
+
+    private void recordReading(float x, float y, float z) {
         StringBuilder sb = new StringBuilder();
         sb.append(System.currentTimeMillis()) //as we need to re-sample the actual sequence to a constant sample rate
                 .append(",").append(x)
@@ -199,9 +206,6 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         fileResultsWriter.println(sb.toString());
 
         statementsLogged++;
-        for (AccelerometerChangeListener listener : listeners) {
-            listener.onAccelerometerChanged(x, y, z);
-        }
     }
 
     @Override

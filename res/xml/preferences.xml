@@ -11,4 +11,8 @@
     <EditTextPreference android:key="pref_LPF_filter_factor"
                         android:title="@string/prefLowPassFilterFactor"
                         android:defaultValue="10"/>
+    <EditTextPreference android:key="pref_detection_threshold"
+                        android:title="@string/prefDetectionThreshold"
+                        android:defaultValue="2"/>
+
 </PreferenceScreen>
