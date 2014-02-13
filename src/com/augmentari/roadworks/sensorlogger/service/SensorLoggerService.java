@@ -102,7 +102,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         isStarted = true;
 
         try {
-            Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Uri notification = Uri.parse("android.resource://com.augmentari.roadworks.sensorlogger/" + R.raw.beep_29);
             Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
             r.play();
         } catch (Exception e) {
