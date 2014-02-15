@@ -156,7 +156,7 @@ public class DataUploaderService extends Service {
                         .setWhen(System.currentTimeMillis())
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
-                        .getNotification();
+                        .build();
                 notificationManager.notify(Constants.DATA_UPLOADER_NOTIFICATION, notification);
             } else {
                 Toast.makeText(DataUploaderService.this, R.string.data_upload_service_fail_text, Toast.LENGTH_LONG);

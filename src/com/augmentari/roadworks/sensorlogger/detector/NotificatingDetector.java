@@ -13,13 +13,13 @@ import com.augmentari.roadworks.sensorlogger.service.SensorLoggerService;
 /**
  * A small utility class which captures 'shake' event and plays a little sound notification.
  */
-public class ShakeDetectorSound implements SensorLoggerService.AccelerometerChangeListener {
+public class NotificatingDetector implements SensorLoggerService.AccelerometerChangeListener {
     private float prevValue = 0f;
     private float threshold = 1;
     private final Ringtone ringtone;
 
-    public ShakeDetectorSound(Context context) {
-        // TODO refactor this out to more common place, also same code used in AccelGraphView
+    public NotificatingDetector(Context context) {
+        // TODO #18 refactor this out to more common place, also same code used in AccelGraphView
         try {
             threshold = Float.valueOf(PreferenceManager
                     .getDefaultSharedPreferences(context)
@@ -32,11 +32,21 @@ public class ShakeDetectorSound implements SensorLoggerService.AccelerometerChan
     }
 
     @Override
-    public void onAccelerometerChanged(float accelFilteredDiffValue, CircularBuffer wholeBuffer) {
-        if (accelFilteredDiffValue > threshold && prevValue < threshold) {
+    public void onAccelerometerChanged(float lastAccelFilteredDiffValue, CircularBuffer wholeBuffer, double latitude, double longitude, double speed) {
+        if (lastAccelFilteredDiffValue > threshold && prevValue < threshold) {
             ringtone.play();
         }
 
-        prevValue = accelFilteredDiffValue;
+        prevValue = lastAccelFilteredDiffValue;
+    }
+
+    @Override
+    public void onNewSessionStarted() {
+        // TODO: play sound of new session if actual
+    }
+
+    @Override
+    public void onSessionClosed() {
+        // TODO: play sound of session closed if actual
     }
 }

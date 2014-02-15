@@ -40,7 +40,6 @@ public class PreferencesActivity extends Activity {
                 }
             });
         }
-
     }
 
     @Override

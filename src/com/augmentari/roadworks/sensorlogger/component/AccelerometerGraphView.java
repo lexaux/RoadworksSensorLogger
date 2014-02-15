@@ -100,6 +100,7 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        // TODO #18 move this out to a separate place
         try {
             threshold = Float.valueOf(PreferenceManager
                     .getDefaultSharedPreferences(getContext())
@@ -138,13 +139,23 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     }
 
     @Override
-    public void onAccelerometerChanged(float value, CircularBuffer buffer) {
+    public void onAccelerometerChanged(float value, CircularBuffer buffer, double latitude, double longitude, double speed) {
         synchronized (changedDataLock) {
             changedDataLock.notifyAll();
         }
         if (this.buffer != buffer) {
             this.buffer = buffer;
         }
+    }
+
+    @Override
+    public void onNewSessionStarted() {
+        //TODO react on screen as session has been started
+    }
+
+    @Override
+    public void onSessionClosed() {
+        //TODO react on screen as session has been closed
     }
 
     class DrawingThread extends Thread {

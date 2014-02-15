@@ -18,9 +18,10 @@ import android.widget.Button;
 import android.widget.TextView;
 import com.augmentari.roadworks.sensorlogger.R;
 import com.augmentari.roadworks.sensorlogger.component.AccelerometerGraphView;
+import com.augmentari.roadworks.sensorlogger.detector.FileLoggingDetector;
+import com.augmentari.roadworks.sensorlogger.detector.NotificatingDetector;
 import com.augmentari.roadworks.sensorlogger.service.DataUploaderService;
 import com.augmentari.roadworks.sensorlogger.service.SensorLoggerService;
-import com.augmentari.roadworks.sensorlogger.detector.ShakeDetectorSound;
 import com.augmentari.roadworks.sensorlogger.util.Constants;
 import com.augmentari.roadworks.sensorlogger.util.Formats;
 import com.augmentari.roadworks.sensorlogger.util.Log;
@@ -49,6 +50,7 @@ public class MainActivity extends Activity {
     private TextView statementsLoggedTextView;
 
     private AccelerometerGraphView accelerometerGraph;
+    private final FileLoggingDetector fileLoggingDetector = new FileLoggingDetector(this);
 
     private SensorLoggerService.SessionLoggerServiceBinder binder = null;
 
@@ -57,7 +59,7 @@ public class MainActivity extends Activity {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             if (binder.hasGPSfix()) {
-                statementsLoggedTextView.setText(Formats.formatWithSuffices(binder.getStatementsLogged()));
+                statementsLoggedTextView.setText(Formats.formatWithSuffices(fileLoggingDetector.getPotholesLogged()));
                 timeLoggedTextView.setText(Long.toString((System.currentTimeMillis() - binder.getStartTimeMillis()) / 1000));
 
             } else {
@@ -73,7 +75,8 @@ public class MainActivity extends Activity {
             binder = (SensorLoggerService.SessionLoggerServiceBinder) service;
 
             binder.addAccelChangedListener(accelerometerGraph);
-            binder.addAccelChangedListener(new ShakeDetectorSound(MainActivity.this));
+            binder.addAccelChangedListener(fileLoggingDetector);
+            binder.addAccelChangedListener(new NotificatingDetector(MainActivity.this));
             if (binder.isStarted()) {
                 setServiceState(ServiceState.STARTED);
             } else {
