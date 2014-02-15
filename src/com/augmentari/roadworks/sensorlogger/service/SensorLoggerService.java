@@ -20,10 +20,12 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.widget.Toast;
 import com.augmentari.roadworks.model.RecordingSession;
 import com.augmentari.roadworks.sensorlogger.R;
 import com.augmentari.roadworks.sensorlogger.activity.MainActivity;
+import com.augmentari.roadworks.sensorlogger.component.CircularBuffer;
 import com.augmentari.roadworks.sensorlogger.dao.RecordingSessionDAO;
 import com.augmentari.roadworks.sensorlogger.util.CloseUtils;
 import com.augmentari.roadworks.sensorlogger.util.Constants;
@@ -38,6 +40,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -69,6 +72,17 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     private double latitude = 0;
     private double longitude = 0;
     private float speed = 0;
+
+    int pointer = 0;
+
+    private int filterFactor = 1;
+
+    float normalizer1[] = null;
+    float normalizer2[] = null;
+    float normalizer3[] = null;
+
+    private CircularBuffer buffer = new CircularBuffer();
+
 
     private RecordingSessionDAO recordingSessionDAO;
 
@@ -102,10 +116,22 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         isStarted = true;
 
         try {
-            Uri notification = Uri.parse("android.resource://com.augmentari.roadworks.sensorlogger/" + R.raw.beep_29);
-            Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
-            r.play();
-        } catch (Exception e) {
+            filterFactor = Integer.valueOf(PreferenceManager
+                    .getDefaultSharedPreferences(this)
+                    .getString("pref_LPF_filter_factor", ""));
+            if (filterFactor <= 1) {
+                Toast.makeText(this, "Filter factor too small, defaulting to 2", Toast.LENGTH_LONG).show();
+                filterFactor = 2;
+            }
+            normalizer1 = new float[filterFactor];
+            normalizer2 = new float[filterFactor];
+            normalizer3 = new float[filterFactor];
+
+            Arrays.fill(normalizer1, 0.0f);
+            Arrays.fill(normalizer2, 0.0f);
+            Arrays.fill(normalizer3, 0.0f);
+        } catch (NumberFormatException ex) {
+            Toast.makeText(this, "Wrong setting for filter factor - defaulting to 10. Prefs.", Toast.LENGTH_LONG).show();
         }
 
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
@@ -155,8 +181,6 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         sensorManager.unregisterListener(this);
         locationManager.removeUpdates(this);
 
-        // seem like don't need to close 'lower' streams, as this delegates close command down the
-        // chain till the fileOutputStream
         if (wakeLock != null) {
             wakeLock.release();
         }
@@ -180,11 +204,13 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         super.onDestroy();
     }
 
+
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         final float[] readings = sensorEvent.values;
         assert readings.length == 3;
 
+        // removing gravity
         final float alpha = 0.8f;
 
         gravity[0] = alpha * gravity[0] + (1 - alpha) * readings[0];
@@ -195,10 +221,26 @@ public class SensorLoggerService extends Service implements SensorEventListener,
         float y = readings[1] - gravity[1];
         float z = readings[2] - gravity[2];
 
-        //        recordReading(x, y, z);
+        // filtering
+
+        // current differential value to go to the LPF buffer
+        normalizer1[pointer] = x;
+        normalizer2[pointer] = y;
+        normalizer3[pointer] = z;
+
+        float valueSum = 0;
+        for (int j = 1; j < filterFactor; j++) {
+            valueSum += Math.abs(normalizer1[j] - normalizer1[j - 1])
+                    + Math.abs(normalizer2[j] - normalizer2[j - 1])
+                    + Math.abs(normalizer3[j] - normalizer3[j - 1]);
+        }
+        float value = valueSum / filterFactor / 3;
+        pointer = (pointer + 1) % filterFactor;
+
+        buffer.append(value);
 
         for (AccelerometerChangeListener listener : listeners) {
-            listener.onAccelerometerChanged(x, y, z);
+            listener.onAccelerometerChanged(value, buffer);
         }
     }
 
@@ -296,7 +338,7 @@ public class SensorLoggerService extends Service implements SensorEventListener,
      * Interface, whose methods get invoked when new data comes from Accelerometer.
      */
     public interface AccelerometerChangeListener {
-        public void onAccelerometerChanged(float a, float b, float c);
+        public void onAccelerometerChanged(final float lastAccelFilteredDiffValue, final CircularBuffer wholeBuffer);
     }
 
     /**
@@ -328,4 +370,5 @@ public class SensorLoggerService extends Service implements SensorEventListener,
             listeners.remove(listener);
         }
     }
+
 }

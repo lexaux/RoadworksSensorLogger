@@ -18,9 +18,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import com.augmentari.roadworks.sensorlogger.R;
 import com.augmentari.roadworks.sensorlogger.component.AccelerometerGraphView;
-import com.augmentari.roadworks.sensorlogger.component.CircularBuffer;
 import com.augmentari.roadworks.sensorlogger.service.DataUploaderService;
 import com.augmentari.roadworks.sensorlogger.service.SensorLoggerService;
+import com.augmentari.roadworks.sensorlogger.detector.ShakeDetectorSound;
 import com.augmentari.roadworks.sensorlogger.util.Constants;
 import com.augmentari.roadworks.sensorlogger.util.Formats;
 import com.augmentari.roadworks.sensorlogger.util.Log;
@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
             binder = (SensorLoggerService.SessionLoggerServiceBinder) service;
 
             binder.addAccelChangedListener(accelerometerGraph);
+            binder.addAccelChangedListener(new ShakeDetectorSound(MainActivity.this));
             if (binder.isStarted()) {
                 setServiceState(ServiceState.STARTED);
             } else {
@@ -166,23 +167,6 @@ public class MainActivity extends Activity {
                 break;
         }
         this.serviceState = serviceState;
-    }
-
-    private CircularBuffer buffer = null;
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        this.buffer = accelerometerGraph.getBuffer();
-    }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (this.buffer != null) {
-            accelerometerGraph.setBuffer(buffer);
-        }
     }
 
     @Override

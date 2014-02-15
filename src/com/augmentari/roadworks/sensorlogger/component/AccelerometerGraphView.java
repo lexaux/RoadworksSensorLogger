@@ -24,15 +24,14 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     public static final float GRAVITY_FT_SEC = 9.8f;
     // max possible size of the circularbuffer = sizeof(float) * 3 * max(deviceX, deviceY). So, should not be more than
     // 20Kb
-    private CircularBuffer buffer = null;
     final Object changedDataLock = new Object();
     private DrawingThread thread;
     private Paint paintNormal, paintOverThreshold, detectionFillPaint, whitePaint;
     private int width;
     private float ftSecToPx;
-    private int filterFactor = 1;
     private int height;
     private float threshold = 2f;
+    private CircularBuffer buffer = null;
 
     public AccelerometerGraphView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -69,29 +68,13 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
         }
 
         float lastX1 = width;
-        float lastY1 = height - (buffer.getA(0) + buffer.getB(0) + buffer.getC(0) / 3 * ftSecToPx);
+        float lastY1 = height - (buffer.getValue(0) * ftSecToPx);
 
-        int pointer = 0;
-        float normalizer1[] = new float[filterFactor];
-        float normalizer2[] = new float[filterFactor];
-        float normalizer3[] = new float[filterFactor];
-        Arrays.fill(normalizer1, 0.0f);
-        Arrays.fill(normalizer2, 0.0f);
-        Arrays.fill(normalizer3, 0.0f);
 
         for (int i = 1; i < buffer.getActualSize(); i++) {
             float toX = width - i;
 
-            // current differential value to go to the LPF buffer
-            normalizer1[pointer] = Math.abs(buffer.getA(i) - buffer.getA(i - 1));
-            normalizer2[pointer] = Math.abs(buffer.getB(i) - buffer.getB(i - 1));
-            normalizer3[pointer] = Math.abs(buffer.getC(i) - buffer.getC(i - 1));
-
-            float valueSum = 0;
-            for (int j = 0; j < filterFactor; j++) {
-                valueSum += normalizer1[j] + normalizer2[j] + normalizer3[j];
-            }
-            float value = valueSum / filterFactor / 3;
+            float value = buffer.getValue(i);
             float toY = height - (value * ftSecToPx);
 
             Paint paint;
@@ -105,8 +88,6 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 
             lastX1 = toX;
             lastY1 = toY;
-
-            pointer = (pointer + 1) % filterFactor;
         }
     }
 
@@ -119,14 +100,6 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        try {
-            filterFactor = Integer.valueOf(PreferenceManager
-                    .getDefaultSharedPreferences(getContext())
-                    .getString("pref_LPF_filter_factor", ""));
-        } catch (NumberFormatException ex) {
-            Toast.makeText(getContext(), "Wrong setting for filter factor - defaulting to 10. Prefs.", Toast.LENGTH_LONG).show();
-        }
-
         try {
             threshold = Float.valueOf(PreferenceManager
                     .getDefaultSharedPreferences(getContext())
@@ -165,20 +138,13 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
     }
 
     @Override
-    public void onAccelerometerChanged(float a, float b, float c) {
+    public void onAccelerometerChanged(float value, CircularBuffer buffer) {
         synchronized (changedDataLock) {
             changedDataLock.notifyAll();
         }
-        if (buffer == null) return;
-        buffer.append(a, b, c);
-    }
-
-    public CircularBuffer getBuffer() {
-        return buffer;
-    }
-
-    public void setBuffer(CircularBuffer buffer) {
-        this.buffer = buffer;
+        if (this.buffer != buffer) {
+            this.buffer = buffer;
+        }
     }
 
     class DrawingThread extends Thread {
@@ -208,7 +174,6 @@ public class AccelerometerGraphView extends SurfaceView implements SurfaceHolder
                     if (c != null) {
                         synchronized (holder) {
                             graphView.doDrawOnSeparateThread(c);
-                            // drawn, wait for new arrivals.
                         }
                     }
                 } catch (InterruptedException e) {
