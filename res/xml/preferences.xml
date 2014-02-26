@@ -1,18 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <ListPreference
-            android:key="pref_api_base_url"
-            android:title="@string/pref_api_base_url_title"
-            android:entries="@array/pref_api_base_url_entries"
-            android:entryValues="@array/pref_api_base_url_values"
-            android:defaultValue="https://46.4.224.49/"/>
-    />
-    <EditTextPreference android:key="pref_LPF_filter_factor"
-                        android:title="@string/prefLowPassFilterFactor"
-                        android:defaultValue="10"/>
-    <EditTextPreference android:key="pref_detection_threshold"
-                        android:title="@string/prefDetectionThreshold"
-                        android:defaultValue="2"/>
+
+    <PreferenceCategory android:title="@string/pref_category_detector_options">
+        <EditTextPreference android:key="pref_LPF_filter_factor"
+                            android:title="@string/prefLowPassFilterFactor"
+                            android:defaultValue="10"/>
+        <EditTextPreference android:key="pref_detection_threshold"
+                            android:title="@string/prefDetectionThreshold"
+                            android:defaultValue="2"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_developer_options">
+        <ListPreference
+                android:key="pref_api_base_url"
+                android:title="@string/pref_api_base_url_title"
+                android:entries="@array/pref_api_base_url_entries"
+                android:entryValues="@array/pref_api_base_url_values"
+                android:defaultValue="https://46.4.224.49/"/>
+        />
+        <CheckBoxPreference android:key="pref_bypass_GPS"
+                            android:title="@string/pref_bypass_gps"
+                            android:defaultValue="false"/>
+    </PreferenceCategory>
 
 </PreferenceScreen>

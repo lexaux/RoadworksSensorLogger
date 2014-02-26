@@ -52,5 +52,8 @@
 
     <string name="manualUploadData">Upload processed data</string>
     <string name="sessionlist_empty_text">No data. Please record some sessions first</string>
+    <string name="pref_bypass_gps">Bypass GPS requirement. Start listening to accelerometer events straight away.</string>
+    <string name="pref_category_detector_options">Detector options</string>
+    <string name="pref_category_developer_options">Developer options</string>
 
 </resources>

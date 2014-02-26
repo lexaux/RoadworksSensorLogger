@@ -84,7 +84,6 @@ public class SensorLoggerService extends Service implements SensorEventListener,
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         isStarted = true;
-
         // TODO #18 refactor this out to Configuration
         try {
             filterFactor = Integer.valueOf(PreferenceManager
@@ -97,6 +96,8 @@ public class SensorLoggerService extends Service implements SensorEventListener,
             Toast.makeText(this, "Filter factor too small, defaulting to 2", Toast.LENGTH_LONG).show();
             filterFactor = 2;
         }
+
+        boolean bypassGps = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_bypass_GPS", false);
 
         try {
             normalizer1 = new float[filterFactor];
@@ -124,9 +125,10 @@ public class SensorLoggerService extends Service implements SensorEventListener,
 
         startForeground(Constants.ONGOING_NOTIFICATION, notification);
 
-        //TODO #18 #15: remove me when ready to only work on GPS.
-        hasLocation = true;
-        subscribeToAccelerometerEvents();
+        if (bypassGps) {
+            hasLocation = true;
+            subscribeToAccelerometerEvents();
+        }
 
         return START_STICKY;
     }
